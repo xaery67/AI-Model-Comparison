@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-canvas: #FBF9F1;
+  --color-neo-yellow: #FFE600;
+  --color-neo-cyan: #00F0FF;
+  --color-neo-lime: #70FF00;
+  --color-neo-coral: #FF4343;
+  --color-neo-purple: #B575FF;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #FBF9F1;
+  color: #121212;
+}
+
+.brutal-card {
+  border: 2px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+  background-color: #ffffff;
+}
+
+.brutal-card-lg {
+  border: 3px solid #000000;
+  box-shadow: 6px 6px 0px #000000;
+  background-color: #ffffff;
+}
+
+.brutal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #000000;
+  box-shadow: 3px 3px 0px #000000;
+  transition: all 0.1s cubic-bezier(0.16, 1, 0.3, 1);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.brutal-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #000000;
+}
+
+.brutal-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #000000;
+}
+
+.brutal-input {
+  border: 2px solid #000000;
+  box-shadow: 2px 2px 0px #000000;
+  background-color: #ffffff;
+  outline: none;
+  transition: all 0.1s ease;
+}
+
+.brutal-input:focus {
+  box-shadow: 4px 4px 0px #000000;
+}

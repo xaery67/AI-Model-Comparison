@@ -1,0 +1,211 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered user profile with role and account metadata",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique identifier of the user",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address",
+          "maxLength": 256
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the user",
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Profile avatar URL",
+          "maxLength": 1024
+        },
+        "role": {
+          "type": "string",
+          "description": "Access level role",
+          "enum": ["member", "admin"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Account status",
+          "enum": ["active", "suspended"]
+        },
+        "evalCount": {
+          "type": "number",
+          "description": "Total evaluations created by this user"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when account was created"
+        }
+      },
+      "required": ["uid", "email", "displayName", "role", "status"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Privileged admin identifier document in the admins collection",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "User ID of the admin",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the admin",
+          "maxLength": 256
+        },
+        "assignedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when admin role was granted"
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "UserEval": {
+      "title": "UserEval",
+      "description": "User's personal AI model evaluation, prompt test, and private notes",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique evaluation ID",
+          "maxLength": 128
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the owner who created this evaluation",
+          "maxLength": 128
+        },
+        "modelName": {
+          "type": "string",
+          "description": "Target AI model name",
+          "maxLength": 100
+        },
+        "benchmarkCategory": {
+          "type": "string",
+          "description": "Category of the evaluation",
+          "enum": ["Coding", "Reasoning", "Agentic", "Multimodal", "General", "Custom"]
+        },
+        "benchmarkName": {
+          "type": "string",
+          "description": "Title of the evaluation or benchmark",
+          "maxLength": 150
+        },
+        "score": {
+          "type": "number",
+          "description": "Evaluation score or metric percentage (0 to 100)"
+        },
+        "promptSample": {
+          "type": "string",
+          "description": "Sample test prompt text",
+          "maxLength": 10000
+        },
+        "responseSnippet": {
+          "type": "string",
+          "description": "Model output response snippet",
+          "maxLength": 10000
+        },
+        "latencyMs": {
+          "type": "number",
+          "description": "Observed execution latency in milliseconds"
+        },
+        "tokenCost": {
+          "type": "number",
+          "description": "Estimated token cost or tokens consumed"
+        },
+        "privateNotes": {
+          "type": "string",
+          "description": "Private commentary and notes",
+          "maxLength": 10000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["id", "ownerId", "modelName", "benchmarkCategory", "benchmarkName", "score"]
+    },
+    "SystemContent": {
+      "title": "SystemContent",
+      "description": "Portal-wide system announcements and featured model highlights",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Content record ID",
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of content",
+          "enum": ["announcement", "featured_model", "category_spotlight"]
+        },
+        "title": {
+          "type": "string",
+          "description": "Headline or title",
+          "maxLength": 200
+        },
+        "body": {
+          "type": "string",
+          "description": "Body text or announcement message",
+          "maxLength": 5000
+        },
+        "targetModel": {
+          "type": "string",
+          "description": "Target model name if applicable",
+          "maxLength": 100
+        },
+        "isPublished": {
+          "type": "boolean",
+          "description": "Visibility flag for public display"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin email or UID who updated this content",
+          "maxLength": 256
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["id", "type", "title", "body", "isPublished"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles collection indexed by UID"
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminRecord",
+      "description": "Collection of designated administrator accounts"
+    },
+    "/user_evals/{evalId}": {
+      "schema": "UserEval",
+      "description": "User custom evaluations and private model notes"
+    },
+    "/system_content/{contentId}": {
+      "schema": "SystemContent",
+      "description": "Global system announcements and featured model content"
+    }
+  }
+}

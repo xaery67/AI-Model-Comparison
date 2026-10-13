@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Security Helpers
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'anonymous');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == 'adifery80@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    // 3. Entity Validators
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'status']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'role', 'status', 'evalCount', 'createdAt']) &&
+        data.uid is string && data.uid.size() > 0 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() > 0 && data.email.size() <= 256 &&
+        data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+        data.role in ['member', 'admin'] &&
+        data.status in ['active', 'suspended'] &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024)) &&
+        (!('evalCount' in data) || (data.evalCount is number));
+    }
+
+    function isValidUserEval(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'modelName', 'benchmarkCategory', 'benchmarkName', 'score']) &&
+        data.keys().hasOnly(['id', 'ownerId', 'modelName', 'benchmarkCategory', 'benchmarkName', 'score', 'promptSample', 'responseSnippet', 'latencyMs', 'tokenCost', 'privateNotes', 'createdAt', 'updatedAt']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.ownerId is string && data.ownerId == request.auth.uid &&
+        data.modelName is string && data.modelName.size() > 0 && data.modelName.size() <= 100 &&
+        data.benchmarkCategory in ['Coding', 'Reasoning', 'Agentic', 'Multimodal', 'General', 'Custom'] &&
+        data.benchmarkName is string && data.benchmarkName.size() > 0 && data.benchmarkName.size() <= 150 &&
+        data.score is number && data.score >= 0 && data.score <= 1000 &&
+        (!('promptSample' in data) || (data.promptSample is string && data.promptSample.size() <= 10000)) &&
+        (!('responseSnippet' in data) || (data.responseSnippet is string && data.responseSnippet.size() <= 10000)) &&
+        (!('latencyMs' in data) || (data.latencyMs is number && data.latencyMs >= 0)) &&
+        (!('tokenCost' in data) || (data.tokenCost is number && data.tokenCost >= 0)) &&
+        (!('privateNotes' in data) || (data.privateNotes is string && data.privateNotes.size() <= 10000));
+    }
+
+    function isValidSystemContent(data) {
+      return data.keys().hasAll(['id', 'type', 'title', 'body', 'isPublished']) &&
+        data.keys().hasOnly(['id', 'type', 'title', 'body', 'targetModel', 'isPublished', 'updatedBy', 'updatedAt']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.type in ['announcement', 'featured_model', 'category_spotlight'] &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+        data.body is string && data.body.size() > 0 && data.body.size() <= 5000 &&
+        data.isPublished is bool &&
+        (!('targetModel' in data) || (data.targetModel is string && data.targetModel.size() <= 100)) &&
+        (!('updatedBy' in data) || (data.updatedBy is string && data.updatedBy.size() <= 256));
+    }
+
+    // 4. Collection Rules
+
+    // Admin whitelist
+    match /admins/{adminId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // User accounts
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == userId &&
+        (incoming().role == 'member' || isAdmin()) &&
+        incoming().status == 'active';
+      allow update: if isSignedIn() && isValidUserProfile(incoming()) && (
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'evalCount']) && incoming().uid == existing().uid) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Personal user evaluations (CRUD)
+    match /user_evals/{evalId} {
+      allow get: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+        isValidId(evalId) &&
+        isValidUserEval(incoming()) &&
+        incoming().ownerId == request.auth.uid;
+      allow update: if isSignedIn() &&
+        isValidUserEval(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        (existing().ownerId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() &&
+        (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // System Content & Announcements
+    match /system_content/{contentId} {
+      allow get: if resource.data.isPublished == true || isAdmin();
+      allow list: if resource.data.isPublished == true || isAdmin();
+      allow create: if isAdmin() && isValidId(contentId) && isValidSystemContent(incoming());
+      allow update: if isAdmin() && isValidSystemContent(incoming());
+      allow delete: if isAdmin();
+    }
+  }
+}
